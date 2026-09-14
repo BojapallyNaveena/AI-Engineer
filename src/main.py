@@ -2,6 +2,7 @@ import asyncio
 import logging
 import json
 from pathlib import Path
+from http.server import BaseHTTPRequestHandler
 
 from src.crawler.crawler import AsyncCrawler
 from src.crawler.github_client import GitHubClient
@@ -170,11 +171,45 @@ async def run_pipeline():
         for entity_name, filepath in export_files.items():
             print(f"  • {entity_name.upper():<20} -> {filepath}")
         print("=" * 60 + "\n")
+        return export_files
 
     finally:
         await crawler.close()
         await github_client.close()
 
+
+# Vercel Serverless Function HTTP Handler
+class handler(BaseHTTPRequestHandler):
+    """Vercel Serverless Function entry point."""
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        response_data = {
+            "status": "success",
+            "message": "AI Data Intelligence Pipeline API is online.",
+            "pipeline": "AI Engineer Demo Pipeline",
+        }
+        self.wfile.write(json.dumps(response_data).encode('utf-8'))
+        return
+
+
+# Vercel WSGI/ASGI Top-Level Application Entry Point
+def app(environ, start_response):
+    """WSGI application entry point for Vercel Python runtime."""
+    status = '200 OK'
+    headers = [('Content-type', 'application/json')]
+    start_response(status, headers)
+    response_data = {
+        "status": "success",
+        "message": "AI Data Intelligence Pipeline API is online.",
+        "pipeline": "AI Engineer Demo Pipeline",
+    }
+    return [json.dumps(response_data).encode('utf-8')]
+
+
+# Alias for Vercel WSGI runner
+application = app
 
 if __name__ == "__main__":
     asyncio.run(run_pipeline())
